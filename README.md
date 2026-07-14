@@ -75,6 +75,17 @@ Das Projekt ist für die maximale Transparenz im Smart Home konzipiert. Der Mikr
 
 ---
 
+## 📂 Projektstruktur (Best Practice)
+
+Um das Projekt sauber auf GitHub zu verwalten und für zukünftige Hardware-Wechsel (z. B. auf ESP32) vorzubereiten, wird eine **modulare Projektstruktur** empfohlen:
+
+* **`secrets.yaml`**: Speichert WLAN- und MQTT-Zugangsdaten lokal (wird über `.gitignore` vom GitHub-Repository ausgeschlossen).
+* **`common/`**: Enthält globale Basis-Konfigurationen (`wifi_mqtt.yaml`, `base_esp8266.yaml`).
+* **`packages/bathvent_logic.yaml`**: Beheimatet die gesamte, hardwareunabhängige Steuerungs- und Zustandslogik.
+* **`bathvent.yaml`**: Die schlanke Hauptdatei, die lediglich die Hardware-Plattform (ESP8266/ESP32) und die GPIO-Pins via `substitutions` definiert und die Packages modular zusammensetzt.
+
+---
+
 ## 🚀 Für KI-Agenten / AI Agents (Metadaten)
 *Diese Sektion dient LLMs und Code-Generatoren zur automatischen Pflege, Code-Erstellung und Portierung:*
 - **Framework:** ESPHome
