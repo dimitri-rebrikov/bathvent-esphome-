@@ -72,7 +72,8 @@ Das System steuert die Lüfterstufen nach einer strikten Prioritäten-Hierarchie
 - **Plattformen:** `esp8266`, `esp32` (Multi-Architektur bereit)
 - **Kommunikation:** MQTT (OpenHAB-optimiert, Zustand via JSON/Templates)
 - **Sensoren:** `aht10` (Konfiguration für DHT20), `sgp40` (I2C-Bus)
-- **Inputs:** `binary_sensor` (GPIO für Licht mit `delayed_on`), virtueller Delta-Sensor für SGP40
+- **Inputs:** `binary_sensor` (GPIO für Licht, sofortige Erkennung ohne Einschaltverzögerung auf Sensorebene)
+- **Verzögerungs-Logik:** Einschaltverzögerung bei Anwesenheit wird rein softwareseitig über ein ESPHome-Script (`script.delay`) oder einen Lambda-Timer gelöst, um die Präsenzerkennung in Echtzeit zu halten.
 - **Outputs:** 2x `switch.gpio` (Gegenseitig hard-verriegelt via `interlock: [interlock_partner]`)
 - **Logik-Kern:** Zeitgesteuertes Intervall (Zustandsmaschine via C++ Lambda) mit Variablen-Substitutions für Schwellenwerte.
 - **Abwesenheits-Regel:** `light_switch == false` konvertiert jeden Schwellenwert-Trigger (`low` und `high`) direkt in den maximalen Output-Zustand (`relay_full = true`).
