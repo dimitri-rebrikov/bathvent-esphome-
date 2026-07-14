@@ -75,6 +75,57 @@ Das Projekt ist für die maximale Transparenz im Smart Home konzipiert. Der Mikr
 
 ---
 
+## 🔌 Verdrahtungsplan (Wiring)
+
+Das System ist in einen sicheren Kleinspannungs-Teil (5V/3,3V DC) und einen Netzspannungs-Teil (230V AC) unterteilt. Die Sensoren, Relais und der Optokoppler sind als fertige Platinen-Module ausgeführt. Sämtliche GND-Potenziale der DC-Seite müssen miteinander verbunden sein.
+
+### 1. Kleinspannung & Logik (DC-Seite)
+
+Das 5V-Mini-Netzteil versorgt den ESP8266, die beiden Relais-Module und das Optokoppler-Modul parallel mit einer stabilen 5V-Schiene. Die hochempfindlichen Sensoren (DHT20 und SGP40) werden mit den intern geregelten 3,3V des ESP8266 betrieben und teilen sich die I2C-Busleitungen parallel.
+
+| Komponente | Modul-Pin | Quelle / Ziel (ESP8266 / Netzteil) | Funktion / Beschreibung |
+| :--- | :--- | :--- | :--- |
+| **Netzteil (5V)** | +5V / VCC | **ESP8266 VIN / Relais 1 & 2 VCC / Opto VCC** | Zentrale 5V-Versorgung (Parallelverteilung) |
+| **Netzteil (5V)** | GND / 0V | **Alle GND-Pins (Gemeinsame Masse)** | Gemeinsames Masse-Referenzpotenzial |
+| **DHT20 (I2C)** | VCC | **ESP8266 3.3V** | Spannungsversorgung Sensor (3,3V Pegel) |
+| **DHT20 (I2C)** | GND | **ESP8266 GND** | Masse |
+| **DHT20 (I2C)** | SDA | **ESP8266 GPIO4 (D2)** | I2C Datenschnittstelle (Data) |
+| **DHT20 (I2C)** | SCL | **ESP8266 GPIO5 (D1)** | I2C Taktschnittstelle (Clock) |
+| **SGP40 (I2C)** | VCC | **ESP8266 3.3V** | Spannungsversorgung Sensor |
+| **SGP40 (I2C)** | GND | **ESP8266 GND** | Masse |
+| **SGP40 (I2C)** | SDA | **ESP8266 GPIO4 (D2)** | I2C Datenschnittstelle (Parallel zu DHT20) |
+| **SGP40 (I2C)** | SCL | **ESP8266 GPIO5 (D1)** | I2C Taktschnittstelle (Parallel zu DHT20) |
+| **Optokoppler** | VCC | **Netzteil +5V** | 5V Logik-Spannungsversorgung (Koppelmodul) |
+| **Optokoppler** | GND | **Netzteil GND** | Masse |
+| **Optokoppler** | OUT | **ESP8266 GPIO12 (D6)** | Signal-Eingang Lichtschalter (Echtzeit) |
+| **Relais 1 (Power)** | VCC | **Netzteil +5V** | 5V Spannungsversorgung für Relais-Spule 1 |
+| **Relais 1 (Power)** | GND | **Netzteil GND** | Masse |
+| **Relais 1 (Power)** | IN / SIG | **ESP8266 GPIO14 (D5)** | Signal-Ausgang Lüfter EIN/AUS |
+| **Relais 2 (Stufe)** | VCC | **Netzteil +5V** (Brücke von Relais 1) | 5V Spannungsversorgung für Relais-Spule 2 |
+| **Relais 2 (Stufe)** | GND | **Netzteil GND** (Brücke von Relais 1) | Masse |
+| **Relais 2 (Stufe)** | IN / SIG | **ESP8266 GPIO13 (D7)** | Signal-Ausgang Stufen-Wahl (Halb/Voll) |
+
+---
+
+### 2. Netzspannung & Last (230V AC-Seite)
+
+> ⚠️ **WARNUNG:** Arbeiten an 230V Netzspannung dürfen nur von qualifiziertem Fachpersonal durchgeführt werden! Vor dem Öffnen oder Verdrahten immer die Sicherung freischalten und auf Spannungsfreiheit prüfen.
+
+Um Fehlfunktionen (z. B. gleichzeitiges Ansteuern beider Wicklungen oder Kurzschlüsse) hardwareseitig komplett auszuschließen, werden die zwei separaten Relais als **Kaskade** geschaltet. Relais 1 trennt das System komplett vom Netz, Relais 2 steuert den Weg über den Kondensator zur Drehzahlreduzierung.
+
+1. **Hauptphase (L):** Führt direkt zum **COM** (Common) von **Relais 1**.
+2. **Kaskadierung:** Vom Ausgang **NO** (Normally Open) von **Relais 1** führt eine Brücke zum Eingang **COM** von **Relais 2**.
+3. **Stufe 1 (Halbe Kraft):** Vom Ausgang **NC** (Normally Closed) von **Relais 2** führt die Phase **über den 450V-Kondensator** zum Lüfter-Eingang für die reduzierte Stufe.
+4. **Stufe 2 (Volle Kraft):** Vom Ausgang **NO** (Normally Open) von **Relais 2** führt die Phase **direkt (ohne Kondensator)** zum Lüfter-Eingang für die maximale Stufe.
+5. **Neutralleiter (N):** Wird vom Netz parallel an den Lüfter (**N**) sowie an die Eingänge des 5V-Mini-Netzteils und des Optokoppler-Moduls (geschaltete Lampen-Phase zur Erkennung) geführt.
+
+#### Logische Schaltmatrix der Relais-Kaskade:
+- **Lüfter AUS:** Relais 1 = AUS | Relais 2 = EGAL
+- **Halbe Stärke:** Relais 1 = EIN | Relais 2 = AUS (Strom fließt über NC durch den Kondensator)
+- **Volle Stärke:** Relais 1 = EIN | Relais 2 = EIN (Strom fließt über NO direkt zum Motor)
+
+---
+
 ## 📂 Projektstruktur (Best Practice)
 
 Um das Projekt sauber auf GitHub zu verwalten und für zukünftige Hardware-Wechsel (z. B. auf ESP32) vorzubereiten, wird eine **modulare Projektstruktur** empfohlen:
