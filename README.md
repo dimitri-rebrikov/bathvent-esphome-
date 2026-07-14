@@ -5,7 +5,7 @@
 ## 📖 Projektbeschreibung
 `bathvent-esphome` ist eine autarke, sensorgesteuerte Smart-Home-Lösung für die Badezimmerlüftung. Das Projekt nutzt eine ausgefeilte lokale Zustandsmaschine, um einen mehrstufigen Ventilator bedarfsgerecht in drei Modi (*Aus*, *Halbe Stärke*, *Volle Stärke*) zu regeln. 
 
-Die Besonderheit liegt in der Kombination aus Anwesenheitserkennung (Licht), Feuchtigkeit (DHT20) und Geruch (SGP40), gepaart mit einer zyklischen "Schnüffel-Automatik" zur präzisen Raumklimamessung bei Abwesenheit. Die Einbindung in Hausautomationssysteme wie **OpenHAB** erfolgt nahtlos über MQTT.
+Die Besonderheit liegt in der intelligenten Kombination aus Anwesenheitserkennung (Licht), Feuchtigkeit (DHT20) und Geruch (SGP40): Während der Anwesenheit schont das System das Gehör des Nutzers durch reduzierte Leistung. Sobald das Bad verlassen wird (Abwesenheit), schaltet das System bei jeglicher Abweichung sofort auf maximale Leistung, um den Raum so schnell wie möglich zu entlüften. Die Einbindung in Hausautomationssysteme wie **OpenHAB** erfolgt nahtlos über MQTT.
 
 ---
 
@@ -29,32 +29,31 @@ Das System steuert die Lüfterstufen nach einer strikten Prioritäten-Hierarchie
 
 | Priorität | Erkannter Zustand | Lüfter-Stufe | Beschreibung / Verhalten |
 | :--- | :--- | :--- | :--- |
-| **1 (Höchste)** | Starke Feuchtigkeit **ODER** Starke Geruchsbelästigung | **Volle Stärke** | **Schimmelschutz & Akut-Entlüftung:** Hat immer Vorrang, auch bei Anwesenheit (Ignoriert Lärmschutz). |
-| **2** | Anwesenheit (Licht AN) | **Halbe Stärke** | **Komfort-Modus:** Um Lärm im Bad zu vermeiden, läuft der Lüfter standardmäßig nur auf halber Kraft. |
-| **3** | Abwesenheit + Feuchtigkeit/Geruch *vorhanden* | **Halbe Stärke** | **Nachlauf-Modus:** Kontinuierliche, leisere Entfeuchtung/Entlüftung nach Verlassen des Raums. |
-| **4** | Abwesenheit + Schnüffel-Intervall aktiv | **Halbe Stärke** | **Mess-Modus:** Kurzer Takt zur Lufterneuerung an den Sensoren. |
+| **1 (Höchste)** | Anwesenheit + Starke Feuchtigkeit / Starke Gerüche | **Volle Stärke** | **Akut-Entlüftung:** Hat im Ernstfall auch bei Anwesenheit Vorrang vor dem Lärmschutz. |
+| **2** | **Abwesenheit** + Feuchtigkeit oder Geruch vorhanden (egal ob leicht oder stark) | **Volle Stärke** | **Effizienz-Lüftung:** Bei Abwesenheit spielt Lärm keine Rolle. Jede Abweichung vom Idealwert wird sofort mit maximaler Power beseitigt. |
+| **3** | Anwesenheit (Licht AN & Verzögerung abgelaufen) | **Halbe Stärke** | **Komfort-Modus:** Standardbetrieb bei normaler Nutzung des Bades, um Lärm für den Menschen zu vermeiden. |
+| **4** | Abwesenheit + Schnüffel-Intervall aktiv | **Halbe Stärke** | **Mess-Modus:** Kurzer Takt zur Lufterneuerung an den Sensoren bei Langzeit-Abwesenheit. |
 | **5 (Niedrigste)**| Abwesenheit + Luft sauber & trocken | **AUS** | **Standby:** Energiesparmodus. |
 
 ### 3. Phasen und zeitliche Abläufe
 
 #### A. Phase: Anwesenheit (Licht geht AN)
 - **Einschaltverzögerung:** Wird das Licht eingeschaltet, wartet das System eine definierte Zeit (z. B. 1,5 Minuten), bevor der Lüfter startet. Wird das Bad vor Ablauf dieser Zeit verlassen, bleibt der Lüfter aus (Vermeidung von Kurzzeit-Lüften beim reinen Händewaschen).
-- **Betrieb:** Nach Ablauf der Verzögerung startet der Lüfter auf **Halber Stärke** (Lärmvermeidung).
+- **Betrieb:** Nach Ablauf der Verzögerung startet der Lüfter auf **Halber Stärke** (Lärmvermeidung für den Menschen im Raum).
 - **Ausnahme:** Tritt *starke* Feuchtigkeit oder *starke* Geruchsbelästigung auf, wird die Halbe-Kraft-Regel sofort überschrieben und auf **Volle Stärke** geschaltet.
 
 #### B. Phase: Nachlauf & Testung (Licht geht AUS)
 - Sobald das Licht erlischt, wechselt das System in die **Test-Phase**.
-- Der Lüfter läuft für 3 Minuten auf **Halber Stärke** weiter (sofern er nicht ohnehin durch Prio 1 auf *Voll* läuft). 
+- Der Lüfter läuft für 3 Minuten auf **Halber Stärke** an/weiter (sofern er nicht ohnehin durch bestehende hohe Werte auf *Voll* läuft). 
 - *Zweck:* Durch die Ansaugung wird stehende Luft im Gehäuse bewegt, damit DHT20 und SGP40 eine valide Messung der echten Raumluft durchführen können.
-- **Entscheidung nach dem Test:**
+- **Entscheidung nach dem Test (Abwesenheit greift):**
   - Luft sauber & trocken? -> Lüfter geht **AUS**.
-  - Feuchtigkeit/Geruch *vorhanden*? -> Lüfter bleibt auf **Halber Stärke**, bis Sollwerte erreicht sind.
-  - Starke Feuchtigkeit/Geruch gemessen? -> Lüfter schaltet hoch auf **Volle Stärke**.
+  - Feuchtigkeit oder Geruch vorhanden (egal ob leicht oder stark)? -> Lüfter schaltet sofort hoch auf **Volle Stärke**, bis die Sollwerte (Idealwerte) erreicht sind.
 
 #### C. Phase: Die Schnüffel-Automatik (Langzeit-Abwesenheit)
 - Ist das Bad über längere Zeit unbewohnt (Abwesenheit), startet alle 45 Minuten ein **Schnüffel-Intervall**.
 - Der Lüfter schaltet sich für **1 Minute auf Halbe Stärke** ein, um frische Raumluft an die Sensoren zu führen.
-- Signalisieren die Sensoren während dieser Minute erhöhte Werte (z. B. Feuchtigkeit kriecht nachträglich aus nassen Handtüchern), bleibt der Lüfter aktiv (Stufe entsprechend der Priorität), bis das Bad wieder trocken/geruchsfrei ist. Andernfalls schaltet er sich wieder ab.
+- Signalisieren die Sensoren während dieser Minute, dass Feuchtigkeit oder Gerüche vorhanden sind (z. B. Feuchtigkeit kriecht nachträglich aus nassen Handtüchern), schaltet der Lüfter sofort hoch auf **Volle Stärke** und bleibt aktiv, bis das Bad wieder komplett trocken/geruchsfrei ist. Andernfalls schaltet er sich nach der Minute wieder ab.
 
 ---
 
@@ -76,6 +75,7 @@ Das System steuert die Lüfterstufen nach einer strikten Prioritäten-Hierarchie
 - **Inputs:** `binary_sensor` (GPIO für Licht mit `delayed_on`), virtueller Delta-Sensor für SGP40
 - **Outputs:** 2x `switch.gpio` (Gegenseitig hard-verriegelt via `interlock: [interlock_partner]`)
 - **Logik-Kern:** Zeitgesteuertes Intervall (Zustandsmaschine via C++ Lambda) mit Variablen-Substitutions für Schwellenwerte.
+- **Abwesenheits-Regel:** `light_switch == false` konvertiert jeden Schwellenwert-Trigger (`low` und `high`) direkt in den maximalen Output-Zustand (`relay_full = true`).
 - **Lizenz:** MIT
 
 ---
