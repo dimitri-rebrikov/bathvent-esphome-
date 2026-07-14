@@ -55,6 +55,15 @@ Das System steuert die Lüfterstufen nach einer strikten Prioritäten-Hierarchie
 - Der Lüfter schaltet sich für **1 Minute auf Halbe Stärke** ein, um frische Raumluft an die Sensoren zu führen.
 - Signalisieren die Sensoren während dieser Minute, dass Feuchtigkeit oder Gerüche vorhanden sind (z. B. Feuchtigkeit kriecht nachträglich aus nassen Handtüchern), schaltet der Lüfter sofort hoch auf **Volle Stärke** und bleibt aktiv, bis das Bad wieder komplett trocken/geruchsfrei ist. Andernfalls schaltet er sich nach der Minute wieder ab.
 
+## 📡 OpenHAB & MQTT-Schnittstelle
+
+Das Projekt ist für die maximale Transparenz im Smart Home konzipiert. Der Mikrocontroller publiziert **jeden internen Zustand** fortlaufend auf dem MQTT-Broker:
+
+1. **Sensordaten (Telemetrie):** Temperatur, relative Luftfeuchtigkeit sowie der berechnete VOC-Index und das VOC-Delta werden zyklisch gesendet.
+2. **Binär-Zustände:** Der aktuelle Status des Lichtschalters (Präsenz) wird in Echtzeit (ohne die Lüfter-Einschaltverzögerung) übertragen.
+3. **Aktor-Zustände:** Der physische Schaltzustand der beiden Relais (Stufe 1 & Stufe 2) wird direkt nach jeder Schalthandlung zurückgemeldet.
+4. **Zustandsmaschine:** Der aktuell aktive Modus der internen Logik (z. B. *Auto*, *Schnüffeln*, *Nachlauf*, *Manuell*) wird als String übertragen.
+
 ---
 
 ## 🛠 Hardware-Komponenten
